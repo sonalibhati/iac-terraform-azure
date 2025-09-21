@@ -1,0 +1,66 @@
+resource "azurerm_virtual_network" "vnetname" {
+  name                = var.vnet_name
+  location            = var.location
+  resource_group_name = var.resourcegroup_name
+  address_space       = ["10.0.0.0/16"]
+  
+  depends_on = [ var.resourcegroup_name ]
+}
+
+  resource "azurerm_subnet" "app-subnet" {
+  name                 = var.app_subnet
+  resource_group_name  = var.resourcegroup_name
+  virtual_network_name = var.vnet_name
+  address_prefixes     = ["10.0.1.0/24"]
+
+  depends_on = [ azurerm_virtual_network.vnetname ]
+  }
+
+  resource "azurerm_subnet" "db-subnet" {
+  name                 = var.db_subnet
+  resource_group_name  = var.resourcegroup_name
+  virtual_network_name = var.vnet_name
+  address_prefixes     = ["10.0.2.0/24"]
+
+  depends_on = [ azurerm_virtual_network.vnetname ]
+  }
+
+
+
+
+
+
+
+Variable terraform file
+
+
+variable "vnet_name" {
+  type = string
+}
+variable "location" {
+  type = string
+}
+variable "app_subnet" {
+  type = string
+}
+variable "db_subnet" {
+  type = string
+}
+variable "resourcegroup_name" {
+  type = string
+}
+
+
+
+
+
+Output
+
+
+output "app_subnet_output" {
+  value = azurerm_subnet.app-subnet
+}
+
+output "app_subnetid_output" {
+  value = azurerm_subnet.app-subnet.id
+}

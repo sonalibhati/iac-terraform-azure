@@ -1,0 +1,32 @@
+resource "azurerm_public_ip" "pip" {
+  name                = var.pip_name
+  resource_group_name = var.resourcegroup_name
+  location            = var.location
+  allocation_method   = "Static"
+
+  
+}
+
+
+
+
+output file
+
+output "pip_id_output" {
+  value = azurerm_public_ip.pip.id
+}
+
+
+
+variables terraform file
+
+
+variable "pip_name" {
+  type = string
+}
+variable "location" {
+  type = string
+}
+variable "resourcegroup_name" {
+  type = string
+}

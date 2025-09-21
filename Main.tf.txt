@@ -1,0 +1,71 @@
+module "resourcegroup" {
+  source = "./resourcegroup"
+  resourcegroup_name = "sandeep"
+  location = "west europe"
+}
+#module for storage account
+
+module "storageaccount" {
+  source = "./storageaccount"
+  resourcegroup_name = module.resourcegroup.rg_name_output
+  storageaccount_name = "stoacc"
+  location = module.resourcegroup.location_output
+}
+
+#module for virtualnetwork
+
+module "virtualnetwork" {
+  source = "./virtualnetwork"
+  resourcegroup_name = module.resourcegroup.rg_name_output
+  location = module.resourcegroup.location_output
+  vnet_name = "ventmodual"
+  app_subnet = "app-subnet"
+  db_subnet = "db-subnet"
+}
+
+#module for network interface
+
+module "network_interface" {
+  source = "./interfacecard"
+  resourcegroup_name = module.resourcegroup.rg_name_output
+  location = module.resourcegroup.location_output
+  network_interface = "nicmodule"
+  app_subnetid = module.virtualnetwork.app_subnetid_output
+  pip_name = module.public_pi.pip_id_output
+}
+
+#module for public ip
+
+module "public_pi" {
+  source = "./publicip"
+  resourcegroup_name = module.resourcegroup.rg_name_output
+  location = module.resourcegroup.location_output
+  pip_name = "demo-pip"
+}
+
+
+#module for network security group
+
+module "nsg" {
+  source = "./networksecurity"
+  resourcegroup_name = module.resourcegroup.rg_name_output
+  location = module.resourcegroup.location_output
+  nsg_name = "testnsg_connect"
+  app_subnetid = module.virtualnetwork.app_subnetid_output
+}
+#module for storage lock
+
+resource "azurerm_management_lock" "storage-lock" {
+  name       = "resource-storage"
+  scope      = module.storageaccount.storageid
+  lock_level = "CanNotDelete"
+  notes      = "Locked because it's needed by a third-party"
+}
+#module for public id lock
+
+resource "azurerm_management_lock" "public_id_lock" {
+  name       = "resource-publicid"
+  scope      = module.public_pi.pip_id_output
+  lock_level = "CanNotDelete"
+  notes      = "Locked because it's needed by a third-party"
+}
