@@ -1,0 +1,126 @@
+
+# NSG in data source
+
+resource "azurerm_resource_group" "rgdetails" {
+  name     = local.resource_group_name
+  location = local.location
+}
+
+resource "azurerm_network_security_group" "nsgdetails" {
+  name                = "nsgtest"
+  location            = local.location
+  resource_group_name = local.resource_group_name
+
+  depends_on = [ azurerm_resource_group.rgdetails ]
+
+}
+
+  resource "azurerm_network_security_rule" "rulesdetails" {
+
+    for_each = { for rule in var.nsg_rules : rule.name => rule}
+
+    
+    name                        = each.value.name
+    priority                    =each.value.priority
+    direction                   = "Inbound"
+    access                      = "Allow"
+    protocol                    = "Tcp"
+    source_port_range           = "*"
+    destination_port_range      = each.value.destination_port_range
+    source_address_prefix       = "*"
+    destination_address_prefix  = "*"
+    resource_group_name         = local.resource_group_name
+    network_security_group_name = azurerm_network_security_group.nsgdetails.name
+
+  }
+ #creating vnet
+resource "azurerm_virtual_network" "nsgvnetdetail" {
+  name                = "nsgvnet-network"
+  location            = azurerm_resource_group.rgdetails.location
+  resource_group_name = azurerm_resource_group.rgdetails.name
+  address_space       = ["10.0.0.0/16"]
+}
+#creating subnet
+resource "azurerm_subnet" "subnet" {
+for_each = {for subnet in var.subnet : subnet.name => subnet}
+
+  name                 = each.value.name
+  resource_group_name  = local.resource_group_name
+  virtual_network_name = azurerm_virtual_network.nsgvnetdetail.name
+  address_prefixes     = [each.value.address_prefixes]
+
+  depends_on = [ azurerm_virtual_network.nsgvnetdetail ]
+
+}
+
+
+
+
+------VARIABLE FILE
+
+variable "nsg_rules" {
+  type = map(object({
+    name = string
+    priority = number
+    destination_port_range = string
+  }))
+
+  default = {
+    "rule1" = {
+      name = "RDP-allow"
+      priority = 100
+      destination_port_range = "3399"
+    },
+
+    "rule2" = {
+        name = "SSH-allow"
+        priority = 200
+        destination_port_range = "22"
+    },
+
+    "rule3"  = {
+        name =  "HTTP-allow"
+        priority =  300
+        destination_port_range = "80"
+    },
+    "rule4" = {
+        name = "HTTPS-allow"
+        priority = 400
+        destination_port_range = "443"
+    }
+  } 
+
+
+}
+variable "subnet" {
+  type = list(object({
+    name = string
+    address_prefixes = string  
+  }))
+
+  default = [ 
+    {
+    name = "subnet12"
+    address_prefixes = "10.0.1.0/24"
+  } ,
+  
+  {
+    name = "subnet13"
+    address_prefixes = "10.0.2.0/24"
+  },
+
+  {
+    name = "subnet14"
+    address_prefixes = "10.0.3.0/24"
+  },
+
+  {
+    name = "subnet15"
+    address_prefixes = "10.0.4.0/24"
+  } 
+  
+  ]
+
+
+}
+

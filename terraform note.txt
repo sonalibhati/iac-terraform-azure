@@ -1,0 +1,142 @@
+
+
+Terraform init
+
+
+terraform {
+  required_providers {
+    azurerm = {
+      source = "hashicorp/azurerm"
+      version = "4.44.0"
+    }
+  }
+}
+
+
+provider "azurerm" {
+  # Configuration options
+
+  subscription_id =
+  tenant_id = 
+  client_id = 
+  client_secret = 
+
+  features {}
+}
+
+
+#Creating and deploying resource group, virtual network, subnets, network interface, public id address, window virtual machine, manage disk and attched the disk with vm.
+
+Mian.tf file
+
+resource "azurerm_resource_group" "rgdetails" {
+  name     = "rg-terraform"
+  location = "West Europe"
+
+}
+resource "azurerm_virtual_network" "vnetdetails" {
+  name                = local.virtual_network.name
+  location            = local.location
+  resource_group_name = local.resource_group_name
+  address_space       = local.virtual_network.address_space
+  
+  depends_on = [ azurerm_resource_group.rgdetails ]
+}
+
+
+ resource "azurerm_subnet" "subnetdetails" {
+  name                 = local.subnet[0].name
+  resource_group_name  = local.resource_group_name
+  virtual_network_name = local.virtual_network.name
+  address_prefixes     = ["10.0.0.0/17"]
+  depends_on = [ azurerm_virtual_network.vnetdetails]
+ }
+
+ resource "azurerm_subnet" "dbsubnetA" {
+  name                 = local.subnet[1].name
+  resource_group_name  = local.resource_group_name
+  virtual_network_name = local.virtual_network.name
+  address_prefixes     = ["10.0.128.0/17"]
+  depends_on = [ azurerm_virtual_network.vnetdetails]
+ }
+
+ 
+ resource "azurerm_network_interface" "nicdetails" {
+  name                = "acctest-nic"
+  resource_group_name = local.resource_group_name
+  location  = local.location
+
+  ip_configuration {
+  name             = "nicterra"
+  subnet_id        = azurerm_subnet.subnetdetails.id
+
+  private_ip_address_allocation = "Dynamic"
+  public_ip_address_id = azurerm_public_ip.publicpidetails.id
+  }
+  
+
+  depends_on = [azurerm_subnet.subnetdetails]
+
+}
+
+
+
+
+
+  
+  output "subnetdetails_id" {
+    value = azurerm_subnet.subnetdetails.id
+  }
+
+  resource "azurerm_public_ip" "publicpidetails" {
+  name                = "terraformpublicip"
+  resource_group_name = local.resource_group_name
+  location            = local.location
+  allocation_method   = "Static"
+
+  depends_on = [ azurerm_resource_group.rgdetails ]
+}
+
+resource "azurerm_windows_virtual_machine" "vmdetails" {
+  name                = "vmterraform"
+  resource_group_name = local.resource_group_name
+  location            = local.location
+  size                = "Standard_B2s"
+  admin_username      = "vmterraform"
+  admin_password      = "Happy@12345678"
+  network_interface_ids = [
+    azurerm_network_interface.nicdetails.id,
+  ]
+
+  os_disk {
+    caching              = "ReadWrite"
+    storage_account_type = "Standard_LRS"
+  }
+
+  source_image_reference {
+    publisher = "MicrosoftWindowsServer"
+    offer     = "WindowsServer"
+    sku       = "2016-Datacenter"
+    version   = "latest"
+  }
+}
+
+resource "azurerm_managed_disk" "datadiskdetails" {
+  name                 = "terraformdisk"
+  location             = local.location
+  resource_group_name  = local.resource_group_name
+  storage_account_type = "Standard_LRS"
+  create_option        = "Empty"
+  disk_size_gb         = "4"
+  depends_on = [ azurerm_windows_virtual_machine.vmdetails ]
+
+  
+}
+resource "azurerm_virtual_machine_data_disk_attachment" "disklinkdetails" {
+  managed_disk_id    = azurerm_managed_disk.datadiskdetails.id
+  virtual_machine_id = azurerm_windows_virtual_machine.vmdetails.id
+  lun                = "0"
+  caching            = "ReadWrite"
+
+  depends_on = [ azurerm_managed_disk.datadiskdetails ]
+}

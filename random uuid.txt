@@ -1,0 +1,24 @@
+
+# create random name
+
+data "azurerm_resource_group" "rgexistingdatail" {
+  name = "rg-datasource"
+}
+
+resource "random_uuid" "st-uid" {
+
+}
+
+output "random-uid" {
+  value = substr(random_uuid.st-uid.result,0,8)
+}
+
+resource "azurerm_storage_account" "example" {
+  name                     = join("",["st",substr(random_uuid.st-uid.result,0,8)])
+  resource_group_name      = data.azurerm_resource_group.rgexistingdatail.name
+  location                 = data.azurerm_resource_group.rgexistingdatail.location
+  account_tier             = "Standard"
+  account_replication_type = "GRS"
+
+  depends_on = [ random_uuid.st-uid,data.azurerm_resource_group.rgexistingdatail ]
+}
